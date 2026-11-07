@@ -1,0 +1,4 @@
+{
+  "feature_switches": {"same_family": false, "temporal_context": true, "quality_interaction": true},
+  "note": "Remove same-family pair features; cross-family pairs remain. This does not establish independence."
+}

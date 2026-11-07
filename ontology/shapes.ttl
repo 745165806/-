@@ -1,0 +1,181 @@
+@prefix of: <https://example.org/ontoforensics#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+
+of:AudioRecordingShape a sh:NodeShape ;
+    sh:targetClass of:AudioRecording ;
+    sh:property [ sh:path of:recordingId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path of:durationSec ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minExclusive 0 ] ;
+    sh:property [ sh:path of:sampleRate ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ; sh:minInclusive 1 ] .
+
+of:TimeWindowShape a sh:NodeShape ;
+    sh:targetClass of:TimeWindow ;
+    sh:property [ sh:path of:windowOf ; sh:minCount 1 ; sh:maxCount 1 ; sh:class of:AudioRecording ] ;
+    sh:property [ sh:path of:startSec ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minInclusive 0 ; sh:lessThan of:endSec ] ;
+    sh:property [ sh:path of:endSec ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minExclusive 0 ] ;
+    sh:sparql [
+        sh:message "A time window cannot extend beyond the observed recording duration." ;
+        sh:select """
+            PREFIX of: <https://example.org/ontoforensics#>
+            SELECT $this WHERE {
+                $this of:endSec ?end ; of:windowOf/of:durationSec ?duration .
+                FILTER (?end > ?duration + 0.00000001)
+            }
+        """
+    ] .
+
+of:EvidenceFamilyShape a sh:NodeShape ;
+    sh:targetClass of:EvidenceFamily ;
+    sh:property [ sh:path of:familyName ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] .
+
+of:DetectorModelShape a sh:NodeShape ;
+    sh:targetClass of:DetectorModel ;
+    sh:property [ sh:path of:detectorId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path of:inEvidenceFamily ; sh:minCount 1 ; sh:maxCount 1 ; sh:class of:EvidenceFamily ] ;
+    sh:property [ sh:path of:scoreType ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("logit" "margin" "probability") ] ;
+    sh:property [ sh:path of:scope ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("local" "global") ] ;
+    sh:property [ sh:path of:higherIsFake ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:boolean ] ;
+    sh:property [ sh:path of:checkpointSha256 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-fA-F]{64}$" ] ;
+    sh:property [ sh:path of:synthetic ; sh:maxCount 1 ; sh:datatype xsd:boolean ] .
+
+of:DetectorRunShape a sh:NodeShape ;
+    sh:targetClass of:DetectorRun ;
+    sh:property [ sh:path of:runId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path of:usesDetector ; sh:minCount 1 ; sh:maxCount 1 ; sh:class of:DetectorModel ] ;
+    sh:property [ sh:path prov:used ; sh:minCount 1 ; sh:maxCount 1 ; sh:class of:AudioRecording ] .
+
+of:ObservationShape a sh:NodeShape ;
+    sh:targetClass of:Observation ;
+    sh:property [ sh:path of:observationId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path prov:wasGeneratedBy ; sh:minCount 1 ; sh:maxCount 1 ; sh:class of:DetectorRun ] ;
+    sh:property [ sh:path of:hasTarget ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path of:status ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("valid" "missing" "not_applicable" "failed") ] ;
+    sh:property [ sh:path of:isCanonical ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:boolean ] ;
+    sh:property [ sh:path of:score ; sh:maxCount 1 ; sh:datatype xsd:double ] ;
+    sh:property [ sh:path of:provenanceId ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:minLength 1 ] ;
+    sh:property [ sh:path of:knownDuplicateOf ; sh:maxCount 1 ; sh:class of:Observation ] ;
+    sh:property [ sh:path of:rmsDb ; sh:maxCount 1 ; sh:datatype xsd:double ] ;
+    sh:property [ sh:path of:clippingFraction ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minInclusive 0 ; sh:maxInclusive 1 ] ;
+    sh:property [ sh:path of:estimatedSnrDb ; sh:maxCount 1 ; sh:datatype xsd:double ] ;
+    sh:xone ( [ sh:class of:LocalObservation ] [ sh:class of:GlobalObservation ] ) ;
+    sh:or (
+        [ sh:property [ sh:path of:status ; sh:hasValue "valid" ] ;
+          sh:property [ sh:path of:score ; sh:minCount 1 ] ]
+        [ sh:property [ sh:path of:status ; sh:in ("missing" "not_applicable" "failed") ] ;
+          sh:property [ sh:path of:score ; sh:maxCount 0 ] ]
+    ) ;
+    sh:sparql [
+        sh:message "A probability score must lie in [0,1]." ;
+        sh:select """
+            PREFIX of: <https://example.org/ontoforensics#>
+            PREFIX prov: <http://www.w3.org/ns/prov#>
+            SELECT $this WHERE {
+                $this prov:wasGeneratedBy/of:usesDetector/of:scoreType "probability" ; of:score ?score .
+                FILTER (?score < 0 || ?score > 1)
+            }
+        """
+    ] ;
+    sh:sparql [
+        sh:message "knownDuplicateOf cannot contain a cycle or self-reference." ;
+        sh:select """
+            PREFIX of: <https://example.org/ontoforensics#>
+            SELECT $this WHERE { $this of:knownDuplicateOf+ $this . }
+        """
+    ] ;
+    sh:sparql [
+        sh:message "A redundant record must point to a canonical record with the same target and status." ;
+        sh:select """
+            PREFIX of: <https://example.org/ontoforensics#>
+            SELECT $this WHERE {
+                $this of:knownDuplicateOf ?source ; of:isCanonical ?canonical ; of:hasTarget ?target ; of:status ?status .
+                ?source of:isCanonical ?sourceCanonical ; of:hasTarget ?sourceTarget ; of:status ?sourceStatus .
+                FILTER (?canonical != false || ?sourceCanonical != true || ?target != ?sourceTarget || ?status != ?sourceStatus)
+            }
+        """
+    ] ;
+    sh:sparql [
+        sh:message "A verified result copy cannot disagree with its source score." ;
+        sh:select """
+            PREFIX of: <https://example.org/ontoforensics#>
+            SELECT $this WHERE {
+                $this of:knownDuplicateOf ?source ; of:score ?score .
+                ?source of:score ?sourceScore .
+                FILTER (?score != ?sourceScore)
+            }
+        """
+    ] ;
+    sh:sparql [
+        sh:message "A canonical=false observation must identify its canonical copy source." ;
+        sh:select """
+            PREFIX of: <https://example.org/ontoforensics#>
+            SELECT $this WHERE {
+                $this of:isCanonical false .
+                FILTER NOT EXISTS { $this of:knownDuplicateOf ?source . }
+            }
+        """
+    ] ;
+    sh:sparql [
+        sh:message "Same-family links require canonical records with the same target and registered family." ;
+        sh:select """
+            PREFIX of: <https://example.org/ontoforensics#>
+            PREFIX prov: <http://www.w3.org/ns/prov#>
+            SELECT $this WHERE {
+                $this of:sameEvidenceFamilyAs ?other ; of:hasTarget ?target ; of:isCanonical ?canonical ;
+                      prov:wasGeneratedBy/of:usesDetector/of:inEvidenceFamily ?family .
+                ?other of:hasTarget ?otherTarget ; of:isCanonical ?otherCanonical ;
+                       prov:wasGeneratedBy/of:usesDetector/of:inEvidenceFamily ?otherFamily .
+                FILTER (?target != ?otherTarget || ?family != ?otherFamily || ?canonical != true || ?otherCanonical != true)
+            }
+        """
+    ] .
+
+of:LocalObservationShape a sh:NodeShape ;
+    sh:targetClass of:LocalObservation ;
+    sh:property [ sh:path of:hasTarget ; sh:class of:TimeWindow ; sh:not [ sh:class of:AudioRecording ] ] ;
+    sh:property [ sh:path (prov:wasGeneratedBy of:usesDetector of:scope) ; sh:hasValue "local" ] ;
+    sh:sparql [
+        sh:message "A local result must target a window of the recording used by its detector invocation." ;
+        sh:select """
+            PREFIX of: <https://example.org/ontoforensics#>
+            PREFIX prov: <http://www.w3.org/ns/prov#>
+            SELECT $this WHERE {
+                $this of:hasTarget/of:windowOf ?recording ; prov:wasGeneratedBy/prov:used ?input .
+                FILTER (?recording != ?input)
+            }
+        """
+    ] ;
+    sh:sparql [
+        sh:message "Temporal links require canonical local records of the same detector and recording in increasing time order." ;
+        sh:select """
+            PREFIX of: <https://example.org/ontoforensics#>
+            PREFIX prov: <http://www.w3.org/ns/prov#>
+            SELECT $this WHERE {
+                $this of:nextTemporalObservation ?next ; of:hasTarget ?window ; of:isCanonical ?canonical ;
+                      prov:wasGeneratedBy/of:usesDetector ?detector .
+                ?window of:windowOf ?recording ; of:startSec ?start ; of:endSec ?end .
+                ?next of:hasTarget ?nextWindow ; of:isCanonical ?nextCanonical ;
+                      prov:wasGeneratedBy/of:usesDetector ?nextDetector .
+                ?nextWindow of:windowOf ?nextRecording ; of:startSec ?nextStart ; of:endSec ?nextEnd .
+                FILTER (?recording != ?nextRecording || ?detector != ?nextDetector ||
+                        ?canonical != true || ?nextCanonical != true ||
+                        ?nextStart < ?start || (?nextStart = ?start && ?nextEnd <= ?end))
+            }
+        """
+    ] .
+
+of:GlobalObservationShape a sh:NodeShape ;
+    sh:targetClass of:GlobalObservation ;
+    sh:property [ sh:path of:hasTarget ; sh:class of:AudioRecording ; sh:not [ sh:class of:TimeWindow ] ] ;
+    sh:property [ sh:path (prov:wasGeneratedBy of:usesDetector of:scope) ; sh:hasValue "global" ] ;
+    sh:sparql [
+        sh:message "A global result must target the complete recording used by its invocation." ;
+        sh:select """
+            PREFIX of: <https://example.org/ontoforensics#>
+            PREFIX prov: <http://www.w3.org/ns/prov#>
+            SELECT $this WHERE {
+                $this of:hasTarget ?target ; prov:wasGeneratedBy/prov:used ?input .
+                FILTER (?target != ?input)
+            }
+        """
+    ] .

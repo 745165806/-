@@ -1,0 +1,10 @@
+{
+  "expert": "lfcc_cnn",
+  "seed": 17,
+  "epochs": 100,
+  "patience": 10,
+  "samples": 64600,
+  "micro_batch": 2,
+  "effective_batch": 24,
+  "lr": 0.0001
+}

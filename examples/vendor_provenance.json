@@ -1,0 +1,18 @@
+{
+  "aasist": {
+    "upstream": "https://github.com/clovaai/aasist",
+    "local_upstream_revision": "a04c9863f63d44471dde8a6abcb3b082b07cd1d1",
+    "upstream_file": "models/AASIST.py",
+    "upstream_file_sha256": "9e0d3e80937dd0577beea7883098465a479da23a198ebc0d712abcc59b0bec50",
+    "vendored_file_sha256": "9e0d3e80937dd0577beea7883098465a479da23a198ebc0d712abcc59b0bec50",
+    "modifications": "Unmodified source copy"
+  },
+  "ssl": {
+    "upstream": "https://github.com/TakHemlata/SSL_Anti-spoofing",
+    "local_upstream_revision": "4acaa61dcef5f7610f43aa4d0b29c4559b970cd2",
+    "upstream_file": "model.py",
+    "upstream_file_sha256": "08b2b99b9cc0e90732746471325185f2eb144795ee35338e0a02951015a856c6",
+    "vendored_file_sha256": "9da0c137487317afea824505dd447f3a491e0c8ef106b9c72f1efa4b02802b52",
+    "modifications": "Checkpoint path supplied by ONTO_XLSR_CHECKPOINT; trailing whitespace removed"
+  }
+}

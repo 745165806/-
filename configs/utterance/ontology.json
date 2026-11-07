@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "experts": [
+    "aasist",
+    "ssl",
+    "lfcc_cnn"
+  ],
+  "families": {
+    "aasist": "raw_waveform",
+    "ssl": "xlsr300m",
+    "lfcc_cnn": "lfcc"
+  },
+  "relations": true,
+  "quality": true
+}

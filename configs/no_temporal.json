@@ -1,0 +1,4 @@
+{
+  "feature_switches": {"same_family": true, "temporal_context": false, "quality_interaction": true},
+  "note": "Remove absolute local-deviation relation features. Flat-model context means and standard deviations are preserved for a fair comparison."
+}

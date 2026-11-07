@@ -1,0 +1,13 @@
+# Observed Python 3.10 validation environment, 2026-11-07.
+# Choose the appropriate PyTorch CPU/CUDA index before installing.
+# The observed torch build was 2.6.0+cu118; tests ran on CPU.
+# SSL/fairseq uses its own upstream-compatible environment.
+numpy==1.26.4
+scipy==1.13.0
+scikit-learn==1.7.2
+torch==2.6.0
+soundfile==0.14.0
+pyarrow==25.0.1
+joblib==1.6.0
+rdflib==7.6.0
+pyshacl==0.40.2

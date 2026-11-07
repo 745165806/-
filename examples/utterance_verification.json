@@ -1,0 +1,26 @@
+{
+  "engineering_verification_only": true,
+  "recordings": 32,
+  "experts": [
+    "aasist",
+    "lfcc_cnn"
+  ],
+  "fusion_variants": 11,
+  "datasets": [
+    "ASVspoof2019_LA",
+    "InTheWild"
+  ],
+  "test_recordings": 8,
+  "epochs_per_expert": 1,
+  "device": "cpu",
+  "full_unit_tests": {
+    "run": 102,
+    "passed": 102,
+    "skipped": 0
+  },
+  "source_index_records": 153240,
+  "inference_observations": 64,
+  "full_gpu_experiments_completed": false,
+  "ssl_verified": false,
+  "test_metrics_are_not_research_results": true
+}

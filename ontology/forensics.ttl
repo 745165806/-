@@ -1,0 +1,88 @@
+@prefix of: <https://example.org/ontoforensics#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix sosa: <http://www.w3.org/ns/sosa/> .
+
+of: a owl:Ontology ;
+    rdfs:label "OntoForensics minimal speech evidence ontology" ;
+    owl:versionInfo "1.0" ;
+    rdfs:comment "An evidence schema for a research baseline. It does not assert authenticity from a detector score. SHACL and Python supply input validation; RDFS domain/range declarations alone do not." .
+
+of:AudioRecording a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Audio recording" .
+of:TimeWindow a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Analysis time window" ;
+    rdfs:comment "A half-open analysis interval [startSec,endSec) within a recording; it is not a ground-truth edit interval." .
+of:DetectorModel a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Detector model artifact" ;
+    rdfs:comment "The configured detector/model artifact, distinguished from the activity that executes it." .
+of:DetectorRun a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Detector invocation" ;
+    rdfs:comment "An invocation scoped to a recording, a detector, and a logged run ID. The baseline does not equate this potentially multi-result invocation with a SOSA observation activity." .
+of:Observation a owl:Class ;
+    rdfs:subClassOf prov:Entity, sosa:Result ;
+    rdfs:label "Detector result record" ;
+    rdfs:comment "A record of an output or missing output. This class is a result entity, NOT sosa:Observation (which is an activity), and NOT a true statement that its target is fake." .
+of:LocalObservation a owl:Class ;
+    rdfs:subClassOf of:Observation ;
+    owl:disjointWith of:GlobalObservation ;
+    rdfs:comment "A result whose target is a TimeWindow." .
+of:GlobalObservation a owl:Class ;
+    rdfs:subClassOf of:Observation ;
+    rdfs:comment "A result whose target is the whole AudioRecording. Reusing it as a covariate for multiple local decisions does not create new independent evidence." .
+of:EvidenceFamily a owl:Class ;
+    rdfs:comment "A registered grouping of detector mechanisms. A family label is not a guarantee of conditional independence within or between groups." .
+
+of:hasTarget a owl:ObjectProperty ;
+    rdfs:domain of:Observation ; rdfs:range prov:Entity .
+of:windowOf a owl:ObjectProperty ;
+    rdfs:domain of:TimeWindow ; rdfs:range of:AudioRecording ;
+    rdfs:comment "Part/interval membership, not subclass membership." .
+of:usesDetector a owl:ObjectProperty ;
+    rdfs:domain of:DetectorRun ; rdfs:range of:DetectorModel .
+of:inEvidenceFamily a owl:ObjectProperty ;
+    rdfs:domain of:DetectorModel ; rdfs:range of:EvidenceFamily .
+of:knownDuplicateOf a owl:ObjectProperty ;
+    rdfs:subPropertyOf prov:wasDerivedFrom ;
+    rdfs:domain of:Observation ; rdfs:range of:Observation ;
+    rdfs:comment "A verified redundant copy of a canonical measurement. Records remain distinct entities, so this is not owl:sameAs. Ordinary prov:wasDerivedFrom is broader and alone does not prove duplication." .
+of:sameEvidenceFamilyAs a owl:ObjectProperty, owl:SymmetricProperty ;
+    rdfs:domain of:Observation ; rdfs:range of:Observation ;
+    rdfs:comment "Derived between canonical observations with the same target and registered evidence family. The numerical baseline uses registry membership and time-grid alignment to build pairwise product/disagreement features described in relations.json." .
+of:nextTemporalObservation a owl:ObjectProperty ;
+    rdfs:domain of:LocalObservation ; rdfs:range of:LocalObservation ;
+    rdfs:comment "The next distinct analysis window for the same recording and detector in timestamp order. Windows may overlap. This audit edge records ordering; the numerical baseline separately computes mask-aware moving context and absolute local deviations on its declared time grid." .
+
+of:recordingId a owl:DatatypeProperty ; rdfs:domain of:AudioRecording ; rdfs:range xsd:string .
+of:durationSec a owl:DatatypeProperty ; rdfs:domain of:AudioRecording ; rdfs:range xsd:double .
+of:sampleRate a owl:DatatypeProperty ; rdfs:domain of:AudioRecording ; rdfs:range xsd:integer .
+of:startSec a owl:DatatypeProperty ; rdfs:domain of:TimeWindow ; rdfs:range xsd:double .
+of:endSec a owl:DatatypeProperty ; rdfs:domain of:TimeWindow ; rdfs:range xsd:double .
+of:detectorId a owl:DatatypeProperty ; rdfs:domain of:DetectorModel ; rdfs:range xsd:string .
+of:scoreType a owl:DatatypeProperty ; rdfs:domain of:DetectorModel ; rdfs:range xsd:string ;
+    rdfs:comment "One of logit, margin, probability. A probability-looking score or log-odds transform is not automatically calibrated." .
+of:scope a owl:DatatypeProperty ; rdfs:domain of:DetectorModel ; rdfs:range xsd:string .
+of:higherIsFake a owl:DatatypeProperty ; rdfs:domain of:DetectorModel ; rdfs:range xsd:boolean .
+of:checkpointSha256 a owl:DatatypeProperty ; rdfs:domain of:DetectorModel ; rdfs:range xsd:string .
+of:synthetic a owl:DatatypeProperty ; rdfs:domain of:DetectorModel ; rdfs:range xsd:boolean ;
+    rdfs:comment "Audit marker for a synthetic demonstration detector. It must not become a prediction feature." .
+of:familyName a owl:DatatypeProperty ; rdfs:domain of:EvidenceFamily ; rdfs:range xsd:string .
+of:runId a owl:DatatypeProperty ; rdfs:domain of:DetectorRun ; rdfs:range xsd:string .
+of:observationId a owl:DatatypeProperty ; rdfs:domain of:Observation ; rdfs:range xsd:string .
+of:status a owl:DatatypeProperty ; rdfs:domain of:Observation ; rdfs:range xsd:string .
+of:score a owl:DatatypeProperty ; rdfs:domain of:Observation ; rdfs:range xsd:double ;
+    rdfs:comment "Unmodified finite detector score. A missing/failed/not_applicable result has no score triple. A valid zero remains an observed zero." .
+of:provenanceId a owl:DatatypeProperty ; rdfs:domain of:Observation ; rdfs:range xsd:string ;
+    rdfs:comment "Identity of a specific detector output, never a shared recording, run, or checkpoint ID." .
+of:isCanonical a owl:DatatypeProperty ; rdfs:domain of:Observation ; rdfs:range xsd:boolean .
+of:rmsDb a owl:DatatypeProperty ; rdfs:domain of:Observation ; rdfs:range xsd:double .
+of:clippingFraction a owl:DatatypeProperty ; rdfs:domain of:Observation ; rdfs:range xsd:double .
+of:estimatedSnrDb a owl:DatatypeProperty ; rdfs:domain of:Observation ; rdfs:range xsd:double ;
+    rdfs:comment "Only include when actually estimated from observed input. It is neither true SNR nor a supplied codec/generator label." .

@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ontology-speech-baseline"
+version = "0.2.0"
+description = "Auditable ontology-guided expert fusion for whole-recording speech forgery detection"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.23,<3", "scipy>=1.9,<2", "scikit-learn>=1.3,<2"]
+
+[project.optional-dependencies]
+utterance = ["torch>=2.0,<3", "soundfile>=0.12,<1", "pyarrow>=12", "joblib>=1.3"]
+test = ["soundfile>=0.12,<1", "joblib>=1.3", "rdflib>=7,<8", "pyshacl>=0.30,<1"]
+ontology = ["rdflib>=7,<8", "pyshacl>=0.30,<1"]
+audio = ["soundfile>=0.12,<1"]
+
+[project.scripts]
+ontoforensics = "ontoforensics.cli:main"
+ontoforensics-utterance = "ontoforensics.utterance.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+ontoforensics = ["resources/*.json", "resources/*.ttl", "utterance/vendor/*LICENSE"]

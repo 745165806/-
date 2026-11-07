@@ -1,0 +1,138 @@
+{
+  "version": "1.0",
+  "namespace": "https://example.org/ontoforensics#",
+  "purpose": "Typed relation specifications compiled by the numerical feature builder; RDF export is an audit view of the same relations.",
+  "input_policy": {
+    "deduplicate_before_features": true,
+    "missing_score": "null",
+    "valid_status": "valid",
+    "score_direction": "Orient each score using higher_is_fake before learning features.",
+    "probability_transform": "Clip probability endpoints, then log-odds. This transform does not calibrate the score.",
+    "probability_clip_epsilon": 1e-06,
+    "score_normalization": "After deduplication, features.fit_score_normalization fits one time-weighted mean/standard deviation per detector using valid train observations only, after score direction correction/log-odds transform/clipping. Apply saved detector statistics before pairwise features or interactions. Parameters are stored in model.json. The downstream feature scaler is also fitted on train only. These scale transforms are not probability calibration.",
+    "missingness": "JSON evidence keeps null and status. Numerical features may use a zero placeholder together with explicit valid masks; this placeholder is not an observed genuine score. Context statistics are mask-aware.",
+    "known_duplicate_counts_are_features": false,
+    "quality_allowlist": [
+      "rms_db",
+      "clipping_fraction",
+      "estimated_snr_db"
+    ],
+    "forbidden_predictive_fields": [
+      "label",
+      "fake_intervals",
+      "ignore_intervals",
+      "editor",
+      "condition",
+      "metadata",
+      "speaker_id",
+      "source_recording_id",
+      "dataset",
+      "split",
+      "provenance_id",
+      "derived_from",
+      "observation_id",
+      "run_id",
+      "recording_id",
+      "audio_path"
+    ],
+    "numeric_score_clip": [
+      -20,
+      20
+    ]
+  },
+  "relations": {
+    "same_family": {
+      "enabled": true,
+      "rdf_relation": "of:sameEvidenceFamilyAs",
+      "registry_relation": "of:inEvidenceFamily",
+      "join_fields": [
+        "recording_id",
+        "analysis_frame",
+        "family"
+      ],
+      "features": [
+        "joint_mean",
+        "disagreement_mean",
+        "available_fraction"
+      ],
+      "description": "Pool all unordered detector pairs of the same registered evidence family into one three-column block on the aligned frame grid: mean score product over valid pairs, mean absolute score difference over valid pairs, and valid-pair fraction relative to all possible same-family pairs. Each statistic has one learned coefficient for this relation type, shared through pooling across its pairs. Setting this switch false removes the entire same-family block. The different-family pooled block remains in relational mode when that type has candidate pairs.",
+      "requirements": "Canonical observations are aligned by overlap-weighted averaging on the analysis frame grid. Scores are first direction-corrected and standardized using saved, time-weighted per-detector train statistics. Means divide by the number of valid pairs; available_fraction divides by the total number of possible pairs of that type. With candidate pairs but no valid pair at a frame, both means are zero placeholders accompanied by available_fraction=0. A type with no candidate pairs has no feature block. Standardized scores are numerical coordinates, not calibrated probabilities. Family membership determines pooling and coefficient sharing; it does not establish error independence. Detector score main effects remain detector-specific.",
+      "feature_name_template": "relation/same_family/{statistic}",
+      "pool_by": "relation_type"
+    },
+    "temporal_context": {
+      "enabled": true,
+      "rdf_relation": "of:nextTemporalObservation",
+      "join_fields": [
+        "recording_id",
+        "detector_id"
+      ],
+      "sort_fields": [
+        "analysis_frame_start"
+      ],
+      "features": [
+        "absolute_local_score_deviation"
+      ],
+      "description": "Add the absolute difference between the current detector score and its mask-aware local moving mean, multiplied by current valid. This is a nonlinear local temporal feature. The grid and context radius are controlled by step_sec and context_sec in build_features. RDF successor edges audit original observation order; the compiler evaluates the local neighborhood on the aligned frame grid.",
+      "requirements": "The flat model already contains the same context mean and std; this feature adds the magnitude of local score deviation. Missing neighbors do not count as zero measurements. This is an offline context feature and never uses annotated editing boundaries. It does not jointly decode a sequence of labels or establish a causal explanation for an editing boundary.",
+      "feature_name_template": "relation/temporal_abs_deviation/{detector_id}",
+      "formula": "abs(score - mask_aware_local_mean) * valid"
+    },
+    "quality_interaction": {
+      "enabled": true,
+      "rdf_properties": [
+        "of:rmsDb",
+        "of:clippingFraction",
+        "of:estimatedSnrDb"
+      ],
+      "join_fields": [
+        "recording_id",
+        "analysis_frame"
+      ],
+      "quality_fields": [
+        "rms_db",
+        "clipping_fraction",
+        "estimated_snr_db"
+      ],
+      "features": [
+        "score_times_quality_covariate"
+      ],
+      "quality_scale_constants": {
+        "rms_db": 40.0,
+        "clipping_fraction": 1.0,
+        "estimated_snr_db": 30.0
+      },
+      "quality_covariate_clip": [
+        -5,
+        5
+      ],
+      "description": "Add detector_score * clip(measured_quality / physical_scale,-5,5) * detector_valid * quality_valid. The flat/base features already retain score, quality main effects, and masks.",
+      "requirements": "These are regression interaction terms with learned coefficients, not posterior-probability multipliers or reliability guarantees. Missing SNR is not fabricated. Quality is pooled from available observation measurements on the frame grid. Final model scaling is fitted only on training data."
+    }
+  },
+  "implementation": "Type-pooled relation feature compilation for a regularized linear fusion baseline; not a CRF, GNN, probabilistic OWL reasoner, or causal model.",
+  "always_present_in_relational_mode": [
+    "One different_family pooled block with joint_mean, disagreement_mean, and available_fraction, when at least one different-family candidate pair exists."
+  ],
+  "flat_model_contains": [
+    "detector score and valid mask",
+    "same mask-aware context mean and std",
+    "quality main effects and valid masks",
+    "log(1+recording_duration)"
+  ],
+  "pair_pooling": {
+    "relation_types": [
+      "same_family",
+      "different_family"
+    ],
+    "candidate_pairs": "Unordered distinct registered detector pairs i<j, classified by whether family_i equals family_j.",
+    "valid_pair": "valid_i AND valid_j on the aligned analysis frame.",
+    "joint_mean": "sum(valid_pair * score_i * score_j) / number_of_valid_pairs",
+    "disagreement_mean": "sum(valid_pair * abs(score_i - score_j)) / number_of_valid_pairs",
+    "available_fraction": "number_of_valid_pairs / number_of_possible_pairs_of_this_relation_type",
+    "zero_valid_pairs": "For an existing type block, both means use a zero placeholder and available_fraction is zero.",
+    "zero_candidate_pairs": "Omit the entire type block.",
+    "coefficient_sharing": "One coefficient per pooled statistic per relation type, not one independent coefficient per detector pair. Each present type contributes exactly three columns.",
+    "single_expert_limit": "A single CFPRF expert has no detector pairs and therefore no pair-relation blocks. Such a run cannot demonstrate multi-expert fusion or dependency handling."
+  }
+}

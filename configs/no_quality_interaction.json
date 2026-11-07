@@ -1,0 +1,4 @@
+{
+  "feature_switches": {"same_family": true, "temporal_context": true, "quality_interaction": false},
+  "note": "Remove score-by-measured-quality interactions while keeping measured-quality main effects and masks."
+}

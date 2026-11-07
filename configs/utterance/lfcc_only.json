@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "experts": ["lfcc_cnn"],
+  "families": {"lfcc_cnn": "lfcc"},
+  "relations": true,
+  "quality": true
+}

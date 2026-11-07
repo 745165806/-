@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "installed_outside_source": true,
+  "packaged_ontology_resources": true,
+  "packaged_vendor_licenses": true,
+  "utterance_graph": {
+    "triples": 450,
+    "recordings": 8,
+    "supervision_exported": false
+  },
+  "versions": {
+    "numpy": "1.26.4",
+    "scipy": "1.13.0",
+    "scikit-learn": "1.7.2",
+    "torch": "2.6.0+cu118",
+    "soundfile": "0.14.0",
+    "pyarrow": "25.0.1",
+    "joblib": "1.6.0",
+    "rdflib": "7.6.0",
+    "pyshacl": "0.40.2"
+  }
+}
